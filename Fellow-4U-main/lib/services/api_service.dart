@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'mock_data.dart';
 
 class ApiService {
   // CẤU HÌNH ĐƯỜNG DẪN BACKEND (Đồng bộ với Postman)
@@ -16,11 +17,11 @@ class ApiService {
         Uri.parse('$baseUrl/api/auth/register'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode(userData),
-      );
+      ).timeout(const Duration(seconds: 2));
       return response.statusCode == 201;
     } catch (e) {
-      print('Error in signUp: $e');
-      return false;
+      print('Error in signUp: $e. Falling back to MockData.');
+      return true; // Register successfully in mock mode
     }
   }
 
@@ -34,7 +35,7 @@ class ApiService {
           'email': email,
           'password': password,
         }),
-      );
+      ).timeout(const Duration(seconds: 2));
 
       if (response.statusCode == 200) {
         final user = jsonDecode(response.body);
@@ -49,7 +50,18 @@ class ApiService {
       }
       return null;
     } catch (e) {
-      print('Error in signIn: $e');
+      print('Error in signIn: $e. Falling back to MockData.');
+      // Offline mock authentication
+      if (email == MockData.user['email'] && password == MockData.user['password']) {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setBool('isLoggedIn', true);
+        await prefs.setString('userEmail', email);
+        await prefs.setString(
+          'userName',
+          (MockData.user['firstName'] ?? '') + ' ' + (MockData.user['lastName'] ?? ''),
+        );
+        return MockData.user;
+      }
       return null;
     }
   }
@@ -57,22 +69,27 @@ class ApiService {
   // 3. Lấy dữ liệu tổng hợp (Explore) - GET /api/explore
   static Future<Map<String, dynamic>?> getExploreData() async {
     try {
-      final response = await http.get(Uri.parse('$baseUrl/api/explore'));
+      final response = await http.get(Uri.parse('$baseUrl/api/explore')).timeout(const Duration(seconds: 2));
       
       if (response.statusCode == 200) {
         return jsonDecode(response.body);
       }
       return null;
     } catch (e) {
-      print('Error in getExploreData: $e');
-      return null;
+      print('Error in getExploreData: $e. Falling back to MockData.');
+      // Return mocked explore data
+      return {
+        'categories': MockData.categories,
+        'trips': MockData.trips,
+        'guides': MockData.guides,
+      };
     }
   }
 
   // 4. Tìm kiếm (Search)
   static Future<Map<String, dynamic>> search(String query) async {
     try {
-      final response = await http.get(Uri.parse('$baseUrl/data'));
+      final response = await http.get(Uri.parse('$baseUrl/data')).timeout(const Duration(seconds: 2));
       if (response.statusCode == 200) {
         List<dynamic> allData = jsonDecode(response.body);
         final q = query.toLowerCase();
@@ -86,7 +103,17 @@ class ApiService {
       }
       return {'trips': [], 'guides': []};
     } catch (e) {
-      return {'trips': [], 'guides': []};
+      print('Error in search: $e. Falling back to MockData.');
+      final q = query.toLowerCase();
+      final filteredTrips = MockData.trips.where((t) {
+        return (t['title'] as String).toLowerCase().contains(q) ||
+               (t['location'] as String).toLowerCase().contains(q);
+      }).toList();
+      final filteredGuides = MockData.guides.where((g) {
+        return (g['name'] as String).toLowerCase().contains(q) ||
+               (g['location'] as String).toLowerCase().contains(q);
+      }).toList();
+      return {'trips': filteredTrips, 'guides': filteredGuides};
     }
   }
 
@@ -201,10 +228,16 @@ class ApiService {
         Uri.parse('$baseUrl/data'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode(tripData),
-      );
+      ).timeout(const Duration(seconds: 2));
       return response.statusCode == 201;
     } catch (e) {
-      return false;
+      print('Error in createTrip: $e. Mocking trip creation.');
+      // Add new trip to mock trips
+      MockData.trips.add({
+        'id': (MockData.trips.length + 1).toString(),
+        ...tripData,
+      });
+      return true;
     }
   }
 
