@@ -1,0 +1,27 @@
+# Backend dependencies
+backend/node_modules/
+backend/.env
+
+# IDEs and Editors
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw*
+
+# Flutter/Dart related
+Fellow-4U-main/.dart_tool/
+Fellow-4U-main/.flutter-plugins-dependencies
+Fellow-4U-main/.pub-cache/
+Fellow-4U-main/.pub/
+Fellow-4U-main/build/
+Fellow-4U-main/android/app/debug/
+Fellow-4U-main/android/app/profile/
+Fellow-4U-main/android/app/release/
+Fellow-4U-main/ios/Flutter/.last_build_id
+
+# Miscellaneous
+*.log
+.DS_Store
